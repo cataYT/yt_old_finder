@@ -37,6 +37,71 @@ async fn get_results(finder: &mut Finder, number_of_videos_input: &str, video_fo
 	}
 }
 
+fn parse_range_or_single(range_or_single: String, max: usize) -> Vec<usize>
+{
+	if range_or_single.contains('-')
+	{
+		let splitted: Vec<&str> = range_or_single.split('-').collect();
+		if splitted.len() != 2
+		{
+			eprintln!("Please enter a valid range like '3-5' or a single number.");
+			return Vec::new();
+		}
+
+		let start: &str = splitted[0].trim();
+		let end: &str = splitted[1].trim();
+
+		let parsed_start: u32 = match start.parse()
+		{
+			Ok(num) => num,
+			Err(_) => {
+				eprintln!("Invalid start number");
+				return Vec::new();
+			}
+		};
+
+		let parsed_end: u32 = match end.parse()
+		{
+			Ok(num) => num,
+			Err(_) => {
+				eprintln!("Invalid end number");
+				return Vec::new();
+			}
+		};
+
+		if parsed_start < 1 || parsed_end > max as u32 || parsed_start > parsed_end
+		{
+			eprintln!("Range out of bounds or invalid");
+			return Vec::new();
+		}
+
+		(parsed_start..=parsed_end)
+			.map(|x| x as usize)
+			.collect()
+	}
+	else
+	{
+		// single number case
+		let parsed: u32 = match range_or_single.parse()
+		{
+			Ok(num) => num,
+			Err(_) => {
+				eprintln!("Invalid number");
+				return Vec::new();
+			}
+		};
+
+		if parsed < 1 || parsed > max as u32
+		{
+			eprintln!("Number out of bounds");
+			return Vec::new();
+		}
+
+		vec![parsed as usize]
+	};
+	Vec::new()
+}
+
 fn save_videos(finder: &mut Finder)
 {
 	if finder.get_videos().len() == 0 { return; }
@@ -45,21 +110,19 @@ fn save_videos(finder: &mut Finder)
 	match save_videos_input.trim().to_ascii_lowercase().as_str()
 	{
 		"y" | "yes" => {
-			let mut number_save: String = String::new();
-			let msg: String = format!
-			(
-				"Enter the video you want to save (1-{}): ",
-				finder.get_videos().len() + 1
-			);
-			get_input(&msg, &mut number_save);
-			match number_save.trim().parse::<u32>()
+			let mut number_range_save = String::new();
+			let max = finder.get_videos().len();
+
+			let msg = format!("Enter the video you want to save (1-{} in range): ", max);
+			get_input(&msg, &mut number_range_save);
+
+			number_range_save = number_range_save.trim().to_string();
+			let result: Vec<usize> = parse_range_or_single(number_range_save, max);
+			if result.len() == 0 { return; }
+			if let Err(e) = finder.save_videos(result)
 			{
-				Ok(n) => {
-					finder.save_videos(n as usize).unwrap();
-				}
-				Err(_) => {}
+				eprintln!("Failed to save videos: {}", e);
 			}
-			drop(number_save);
 		}
 		_ => return
 	}
@@ -87,7 +150,5 @@ async fn main()
 			},
 			Err(err) => eprintln!("Failed to parse number of videos: {}", err) 
 		}
-		drop(number_of_videos_input);
 	}
-	drop(video_format_input);
 }

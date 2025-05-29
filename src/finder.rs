@@ -48,17 +48,19 @@ impl Finder
 		self.videos.push(video_link);
 	}
 
-	pub fn save_videos(&self, n: usize) -> std::io::Result<()>
+	pub fn save_videos(&self, n: Vec<usize>) -> std::io::Result<()>
 	{
 		let file_name: &str = "videos.txt";
 		let mut file: File = OpenOptions::new()
 			.create(true)
 			.append(true)
 			.open(file_name)?;
-
-		writeln!(file, "{}", self.videos[n + 1])?;
+		
+		for i in &n
+		{
+			writeln!(file, "{}", self.videos[*i - 1])?;
+		}
 		println!("Saved!");
-		drop(file);
 		Ok(())
 	}
 
